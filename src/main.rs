@@ -117,13 +117,12 @@ fn main() {
 
     loop {
         clearscreen::clear().unwrap();
-        println!("---");
+        println!("----------");
         for blender in &store.blenders {
             println!("{}", blender);
         }
-
+        println!("----------");
         println!("Queue size: {}", store.queue.clone().size());
-        println!("---");
         store.tick();
     }
 }
