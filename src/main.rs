@@ -3,8 +3,9 @@ use core::panic;
 use rand::seq::SliceRandom;
 use std::ops::Add;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::vec;
+use tokio::task;
 
 struct Store {
     name: String,
@@ -16,7 +17,7 @@ struct Store {
 #[derive(Clone, Copy)]
 struct Blender {
     speed: u32,
-    active: bool,
+    state: (Instant, Duration),
 }
 
 struct Queue {
@@ -39,7 +40,8 @@ struct Cli {
     command: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Cli::parse();
 
     let mut store = Store::new();
@@ -61,7 +63,7 @@ fn main() {
 
     // simulation loop
     loop {
-        store.simulate()
+        store.simulate().await
     }
 }
 
@@ -72,37 +74,41 @@ impl Store {
             blenders: vec![{
                 Blender {
                     speed: 1200,
-                    active: false,
+                    state: (Instant::now(), Duration::new(0, 0)),
                 }
             }],
             queue: Queue { orders: vec![] },
         }
     }
 
-    fn simulate(&mut self) {
-        self.process_orders();
+    async fn simulate(&mut self) {
+        self.process_orders().await;
     }
 
-    fn process_orders(&mut self) {
+    async fn process_orders(&mut self) {
         for order in &self.queue.orders {
-            println!("Processing order for {}", order.name);
-
             let available_blender = self.get_available_blender();
 
-            let time = available_blender.blend(&order.ingredients);
+            match available_blender {
+                Some(mut blender) => {
+                    println!("Processing order for {}", order.name);
 
-            println!("It took {:?} to process this order", time);
+                    blender.blend(&order.ingredients).await;
+
+                    println!("It took {:?} to process this order", blender.state.1);
+                }
+                None => {}
+            }
         }
     }
 
-    fn get_available_blender(&self) -> Blender {
-        let free_index = self
-            .blenders
-            .iter()
-            .position(|x| x.active == false)
-            .unwrap();
+    fn get_available_blender(&self) -> Option<Blender> {
+        let free_index = self.blenders.iter().position(|x| x.is_active() == false);
 
-        self.blenders[free_index]
+        match free_index {
+            Some(index) => Some(self.blenders[index]),
+            None => None,
+        }
     }
 }
 
@@ -117,17 +123,29 @@ impl Queue {
 }
 
 impl Blender {
-    fn blend(&self, objects: &Vec<Object>) -> Duration {
+    async fn blend(&mut self, objects: &Vec<Object>) {
         let mut time_to_blend = Duration::new(0, 0);
+
+        let started_at = Instant::now();
 
         for object in objects {
             time_to_blend = time_to_blend.add(Duration::from_secs(
                 (object.blend_ms_per_w / self.speed).into(),
             ));
         }
+        self.state = (started_at, time_to_blend);
 
         sleep(time_to_blend);
+    }
 
-        time_to_blend
+    fn is_active(&self) -> bool {
+        let is_state_unset = self.state.1.is_zero();
+        let has_blend_time_lapsed = self.state.0.elapsed().ge(&self.state.1);
+
+        if is_state_unset || has_blend_time_lapsed {
+            false
+        } else {
+            true
+        }
     }
 }
