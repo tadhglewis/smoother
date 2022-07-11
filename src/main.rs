@@ -14,13 +14,11 @@ struct Store {
     // queue: Vec<Customer>,
 }
 
-#[derive(Clone, Copy)]
 struct Blender {
     speed: u32,
     state: (Instant, Duration),
 }
 
-#[derive(Clone)]
 struct Queue {
     orders: Vec<Order>,
 }
@@ -122,7 +120,7 @@ fn main() {
             println!("{}", blender);
         }
         println!("----------");
-        println!("Queue size: {}", store.queue.clone().size());
+        println!("Queue size: {}", store.queue.size());
         store.tick();
     }
 }
@@ -187,7 +185,7 @@ impl Store {
 }
 
 impl Queue {
-    pub fn size(self) -> usize {
+    pub fn size(&self) -> usize {
         self.orders.len()
     }
 
