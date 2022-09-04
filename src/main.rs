@@ -75,7 +75,7 @@ fn main() {
     let mut store = Store::new();
 
     store.queue.add(Order {
-        name: "Jahred".to_string(),
+        name: "John".to_string(),
         ingredients: [
             Object {
                 name: "Ice".to_string(),
@@ -90,7 +90,7 @@ fn main() {
     });
 
     store.queue.add(Order {
-        name: "Jahred".to_string(),
+        name: "John".to_string(),
         ingredients: [
             Object {
                 name: "Ice".to_string(),
